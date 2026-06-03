@@ -20,7 +20,7 @@ export default function ShopPage() {
   const addItem = useCartStore((state) => state.addItem);
   const setCartOpen = useCartStore((state) => state.setIsOpen);
 
-  const categories = ["All", "Single Origin", "Espresso Blends", "Reserve"];
+  const categories = ["All", "Single Origin", "Espresso Blends", "Signature", "Cold Brew", "Dark Roasts", "Decaf", "Everyday"];
 
   // Filter & Sort Logic
   const getFilteredProducts = () => {
@@ -55,7 +55,7 @@ export default function ShopPage() {
 
   // Simulate loading extra items for Infinite Scroll
   const loadMoreItems = () => {
-    if (loadMoreCount >= 2) {
+    if (loadMoreCount >= 3) {
       setHasMore(false);
       return;
     }
