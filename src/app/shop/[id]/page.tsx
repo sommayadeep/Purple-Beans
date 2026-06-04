@@ -187,7 +187,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<Params>
 
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-extrabold text-[#1C120D]">
-                  ${finalPrice.toFixed(2)}
+₹{Math.round(finalPrice)}
                 </span>
                 <span className="text-xs text-[#5A3825]/60">Complimentary Global Air shipping</span>
               </div>

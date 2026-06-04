@@ -213,7 +213,7 @@ export default function ShopPage() {
                     {/* Price and Cart */}
                     <div className="mt-6 pt-4 border-t border-[#EADFCC]/50 flex items-center justify-between gap-4">
                       <span className="text-base font-bold text-[#1C120D]">
-                        ${product.price.toFixed(2)}
+₹{Math.round(product.price)}
                       </span>
 
                       <button

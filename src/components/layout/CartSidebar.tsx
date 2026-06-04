@@ -101,7 +101,7 @@ export default function CartSidebar() {
                             {item.product.name}
                           </h4>
                           <span className="text-sm font-semibold text-[#1C120D]">
-                            ${(item.product.price * item.quantity).toFixed(2)}
+₹{Math.round(item.product.price * item.quantity)}
                           </span>
                         </div>
                         <p className="text-xs text-[#6B4B7D] mt-0.5">
@@ -170,7 +170,7 @@ export default function CartSidebar() {
                       Total
                     </span>
                     <span className="text-xl font-bold text-[#1C120D]">
-                      ${getTotalPrice().toFixed(2)}
+₹{Math.round(getTotalPrice())}
                     </span>
                   </div>
                 </div>

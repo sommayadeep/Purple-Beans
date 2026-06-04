@@ -260,7 +260,7 @@ export default function CheckoutPage() {
                 disabled={isProcessing || items.length === 0}
                 className="w-full py-4 bg-[#5A3825] hover:bg-[#6B4B7D] disabled:bg-[#5A3825]/50 text-[#FFFFFF] text-sm uppercase tracking-wider font-semibold rounded-sm transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2"
               >
-                {isProcessing ? "Processing Vault Payment..." : `Authorize Purchase • $${totalPrice.toFixed(2)}`}
+{isProcessing ? "Processing Vault Payment..." : `Authorize Purchase • ₹${Math.round(totalPrice)}`}
               </button>
             </form>
           </div>
@@ -300,7 +300,7 @@ export default function CheckoutPage() {
                       </div>
                     </div>
                     <span className="font-semibold text-[#1C120D]">
-                      ${(item.product.price * item.quantity).toFixed(2)}
+                      ₹{(item.product.price * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -311,7 +311,7 @@ export default function CheckoutPage() {
             <div className="space-y-2.5 pt-4 text-xs text-[#5A3825] border-t border-[#EADFCC]">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span className="font-semibold text-[#1C120D]">${totalPrice.toFixed(2)}</span>
+<span className="font-semibold text-[#1C120D]">₹{Math.round(totalPrice)}</span>
               </div>
               <div className="flex justify-between">
                 <span>Roastery Air Freight</span>
@@ -319,7 +319,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-sm font-bold text-[#1C120D] pt-2 border-t border-[#EADFCC]/50">
                 <span>Estimated Total</span>
-                <span>${totalPrice.toFixed(2)}</span>
+<span>₹{Math.round(totalPrice)}</span>
               </div>
             </div>
           </div>
