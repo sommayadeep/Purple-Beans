@@ -10,6 +10,26 @@ import Product from "./models/Product";
 import Order from "./models/Order";
 import { seedDatabase } from "./lib/seed";
 
+interface NominatimReverseResponse {
+  display_name?: string;
+  address?: {
+    road?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    postcode?: string;
+    country?: string;
+  };
+}
+
+interface TurnstileVerifyResponse {
+  success?: boolean;
+  [key: string]: unknown;
+}
+
 // Load environment variables
 dotenv.config();
 
@@ -514,7 +534,7 @@ app.get("/api/location", async (req: Request, res: Response) => {
       throw new Error("Failed to fetch address from Nominatim");
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as NominatimReverseResponse;
     const address = data.address || {};
 
     res.json({
@@ -568,7 +588,7 @@ app.post("/api/turnstile", async (req: Request, res: Response) => {
       }
     );
 
-    const outcome = await response.json();
+    const outcome = (await response.json()) as TurnstileVerifyResponse;
     if (outcome.success) {
       res.json({ success: true });
     } else {
