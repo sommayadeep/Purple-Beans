@@ -21,6 +21,19 @@ interface Address {
   country: string;
 }
 
+interface SavedAddress {
+  label: string;
+  street: string;
+  suburb?: string;
+  city: string;
+  state: string;
+  postalCode: string;
+  country: string;
+  lat?: number;
+  lng?: number;
+  isDefault: boolean;
+}
+
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -38,6 +51,10 @@ export default function CheckoutPage() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [selectedAddressIndex, setSelectedAddressIndex] = useState<number | "new">("new");
+  const [addressLabel, setAddressLabel] = useState("Home");
+  const [saveAddress, setSaveAddress] = useState(true);
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -49,6 +66,72 @@ export default function CheckoutPage() {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent("/checkout")}`);
     }
   }, [status, router]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+
+    const loadSavedAddresses = async () => {
+      try {
+        const res = await fetch("/api/me/addresses", { cache: "no-store" });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          const addresses = data.addresses || [];
+          setSavedAddresses(addresses);
+          if (data.phone) setPhone(data.phone);
+
+          const defaultIndex = addresses.findIndex((savedAddress: SavedAddress) => savedAddress.isDefault);
+          const indexToUse = defaultIndex >= 0 ? defaultIndex : addresses.length > 0 ? 0 : "new";
+
+          if (indexToUse !== "new") {
+            setSelectedAddressIndex(indexToUse);
+            const savedAddress = addresses[indexToUse];
+            setAddress({
+              road: savedAddress.street,
+              suburb: savedAddress.suburb || "",
+              city: savedAddress.city,
+              state: savedAddress.state,
+              postcode: savedAddress.postalCode,
+              country: savedAddress.country,
+            });
+            setAddressLabel(savedAddress.label || "Home");
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    loadSavedAddresses();
+  }, [status]);
+
+  const selectSavedAddress = (index: number | "new") => {
+    setSelectedAddressIndex(index);
+    if (index === "new") {
+      setAddress({
+        road: "",
+        suburb: "",
+        city: "",
+        state: "",
+        postcode: "",
+        country: "",
+      });
+      setAddressLabel("Home");
+      setSaveAddress(true);
+      return;
+    }
+
+    const savedAddress = savedAddresses[index];
+    setAddress({
+      road: savedAddress.street,
+      suburb: savedAddress.suburb || "",
+      city: savedAddress.city,
+      state: savedAddress.state,
+      postcode: savedAddress.postalCode,
+      country: savedAddress.country,
+    });
+    setAddressLabel(savedAddress.label || "Home");
+    setSaveAddress(false);
+  };
 
   const totalPrice = getTotalPrice();
 
@@ -103,6 +186,7 @@ export default function CheckoutPage() {
       }
 
       const formattedAddress = {
+        label: addressLabel,
         street: address.road,
         suburb: address.suburb,
         city: address.city,
@@ -128,6 +212,7 @@ export default function CheckoutPage() {
             shippingAddress: formattedAddress,
             paymentMethod: "cod",
             notes,
+            saveAddress,
           }),
         });
 
@@ -189,6 +274,7 @@ export default function CheckoutPage() {
                 paymentMethod: "razorpay",
                 notes,
                 razorpayOrderId: payData.order.id,
+                saveAddress,
               }),
             });
 
@@ -374,8 +460,109 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Location Picker (Detects location and resolves to input address fields) */}
-              <LocationPicker onAddressSelected={(addr) => setAddress(addr)} />
+              <div className="space-y-3">
+                <h3 className="text-xs uppercase tracking-wider font-bold text-[#1C120D] border-b border-[#EADFCC]/50 pb-2">
+                  Delivery Address
+                </h3>
+
+                {savedAddresses.length > 0 && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {savedAddresses.map((savedAddress, index) => (
+                      <button
+                        key={`${savedAddress.street}-${savedAddress.postalCode}-${index}`}
+                        type="button"
+                        onClick={() => selectSavedAddress(index)}
+                        className={`text-left p-4 border rounded-sm transition-all cursor-pointer ${
+                          selectedAddressIndex === index
+                            ? "border-[#6B4B7D] bg-[#6B4B7D]/5"
+                            : "border-[#EADFCC] bg-[#FFFFFF]"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-bold uppercase tracking-wider text-[#1C120D]">
+                            {savedAddress.label || "Saved Address"}
+                          </span>
+                          {savedAddress.isDefault && (
+                            <span className="text-[10px] uppercase tracking-wider text-[#6B4B7D] font-bold">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-2 text-xs text-[#5A3825]/80 leading-relaxed">
+                          {savedAddress.street}
+                          {savedAddress.suburb ? `, ${savedAddress.suburb}` : ""}, {savedAddress.city}, {savedAddress.state} - {savedAddress.postalCode}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-wider text-[#5A3825]/60 mt-1">
+                          {savedAddress.country}
+                        </p>
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => selectSavedAddress("new")}
+                      className={`text-left p-4 border rounded-sm transition-all cursor-pointer ${
+                        selectedAddressIndex === "new"
+                          ? "border-[#6B4B7D] bg-[#6B4B7D]/5"
+                          : "border-[#EADFCC] bg-[#FFFFFF]"
+                      }`}
+                    >
+                      <span className="text-xs font-bold uppercase tracking-wider text-[#1C120D]">
+                        New Address
+                      </span>
+                      <p className="mt-2 text-xs text-[#5A3825]/80">
+                        Add another delivery location for this order.
+                      </p>
+                    </button>
+                  </div>
+                )}
+
+                {selectedAddressIndex === "new" && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-[#1C120D]/60 uppercase tracking-wider mb-1">
+                        Address Label
+                      </label>
+                      <input
+                        type="text"
+                        value={addressLabel}
+                        onChange={(e) => setAddressLabel(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-transparent border border-[#EADFCC] rounded-sm text-sm text-[#1C120D] focus:border-[#6B4B7D] focus:outline-none transition-colors"
+                        placeholder="Home, Office, Warehouse..."
+                      />
+                    </div>
+
+                    <LocationPicker
+                      onAddressSelected={(addr) => {
+                        setAddress(addr);
+                        setSaveAddress(true);
+                      }}
+                    />
+
+                    <label className="flex items-center gap-2 text-xs text-[#5A3825]">
+                      <input
+                        type="checkbox"
+                        checked={saveAddress}
+                        onChange={(e) => setSaveAddress(e.target.checked)}
+                        className="accent-[#6B4B7D]"
+                      />
+                      Save this address for faster checkout next time
+                    </label>
+                  </div>
+                )}
+
+                {selectedAddressIndex !== "new" && (
+                  <label className="flex items-center gap-2 text-xs text-[#5A3825]">
+                    <input
+                      type="checkbox"
+                      checked={saveAddress}
+                      onChange={(e) => setSaveAddress(e.target.checked)}
+                      className="accent-[#6B4B7D]"
+                    />
+                    Update my saved phone/address details after placing this order
+                  </label>
+                )}
+              </div>
 
               {/* Internal Roastery Notes */}
               <div>

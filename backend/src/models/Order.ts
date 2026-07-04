@@ -18,11 +18,16 @@ export interface IOrder extends Document {
   customerPhone: string;
   items: IOrderItem[];
   shippingAddress: {
+    label?: string;
     street: string;
+    suburb?: string;
     city: string;
     state: string;
     postalCode: string;
     country: string;
+    phone?: string;
+    lat?: number;
+    lng?: number;
   };
   paymentMethod: "cod" | "razorpay";
   paymentStatus: "pending" | "paid" | "failed";
@@ -58,11 +63,16 @@ const OrderSchema = new Schema<IOrder>(
     customerPhone: { type: String, default: "" },
     items: { type: [OrderItemSchema], required: true },
     shippingAddress: {
+      label: { type: String, default: "Delivery" },
       street: { type: String, required: true },
+      suburb: { type: String, default: "" },
       city: { type: String, required: true },
       state: { type: String, default: "" },
       postalCode: { type: String, required: true },
       country: { type: String, default: "India" },
+      phone: { type: String, default: "" },
+      lat: { type: Number },
+      lng: { type: Number },
     },
     paymentMethod: {
       type: String,

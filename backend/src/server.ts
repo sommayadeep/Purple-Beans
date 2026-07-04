@@ -288,7 +288,85 @@ app.delete("/api/products/:id", verifyAdmin, async (req: Request, res: Response)
 });
 
 // ==========================================
-// 3. ORDERS ENDPOINTS
+// 3. CUSTOMER PROFILE ENDPOINTS
+// ==========================================
+
+// GET /api/me/addresses - Saved delivery addresses for the logged-in user
+app.get("/api/me/addresses", verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.headers["x-user-id"] as string;
+    const user = await User.findById(userId).select("phone addresses");
+
+    if (!user) {
+      res.status(404).json({ success: false, error: "User not found" });
+      return;
+    }
+
+    res.json({ success: true, phone: user.phone || "", addresses: user.addresses || [] });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// POST /api/me/addresses - Save or update a delivery address
+app.post("/api/me/addresses", verifyAuth, async (req: Request, res: Response) => {
+  try {
+    const userId = req.headers["x-user-id"] as string;
+    const { address, phone } = req.body;
+
+    if (!address?.street || !address?.city || !address?.postalCode || !address?.country) {
+      res.status(400).json({ success: false, error: "Missing required address fields" });
+      return;
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      res.status(404).json({ success: false, error: "User not found" });
+      return;
+    }
+
+    if (phone) user.phone = phone;
+
+    const normalizedAddress = {
+      label: address.label || "Home",
+      street: address.street,
+      suburb: address.suburb || "",
+      city: address.city,
+      state: address.state || "",
+      postalCode: address.postalCode,
+      country: address.country || "India",
+      lat: address.lat,
+      lng: address.lng,
+      isDefault: user.addresses.length === 0 || Boolean(address.isDefault),
+    };
+
+    if (normalizedAddress.isDefault) {
+      user.addresses.forEach((savedAddress) => {
+        savedAddress.isDefault = false;
+      });
+    }
+
+    const existingIndex = user.addresses.findIndex((savedAddress) =>
+      savedAddress.street === normalizedAddress.street &&
+      savedAddress.city === normalizedAddress.city &&
+      savedAddress.postalCode === normalizedAddress.postalCode
+    );
+
+    if (existingIndex >= 0) {
+      user.addresses[existingIndex] = normalizedAddress;
+    } else {
+      user.addresses.push(normalizedAddress);
+    }
+
+    await user.save();
+    res.status(201).json({ success: true, phone: user.phone || "", addresses: user.addresses });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ==========================================
+// 4. ORDERS ENDPOINTS
 // ==========================================
 
 // GET /api/orders - Get orders (Admin gets all, Customer gets own)
@@ -317,10 +395,15 @@ app.post("/api/orders", verifyAuth, async (req: Request, res: Response) => {
     const userEmail = req.headers["x-user-email"] as string;
     const userName = req.headers["x-user-name"] as string;
 
-    const { items, shippingAddress, paymentMethod, notes, razorpayOrderId } = req.body;
+    const { items, shippingAddress, paymentMethod, notes, razorpayOrderId, saveAddress = true } = req.body;
 
     if (!items || items.length === 0 || !shippingAddress) {
       res.status(400).json({ success: false, error: "Missing required fields" });
+      return;
+    }
+
+    if (!shippingAddress.street || !shippingAddress.city || !shippingAddress.postalCode || !shippingAddress.country || !shippingAddress.phone) {
+      res.status(400).json({ success: false, error: "Complete delivery address and phone are required" });
       return;
     }
 
@@ -371,11 +454,16 @@ app.post("/api/orders", verifyAuth, async (req: Request, res: Response) => {
       customerPhone: shippingAddress.phone || "",
       items: validatedItems,
       shippingAddress: {
+        label: shippingAddress.label || "Delivery",
         street: shippingAddress.street,
+        suburb: shippingAddress.suburb || "",
         city: shippingAddress.city,
         state: shippingAddress.state || "",
         postalCode: shippingAddress.postalCode,
         country: shippingAddress.country || "India",
+        phone: shippingAddress.phone || "",
+        lat: shippingAddress.lat,
+        lng: shippingAddress.lng,
       },
       paymentMethod,
       paymentStatus: "pending",
@@ -386,6 +474,49 @@ app.post("/api/orders", verifyAuth, async (req: Request, res: Response) => {
     };
 
     const order = await Order.create(orderData);
+
+    if (saveAddress) {
+      const user = await User.findById(userId);
+      if (user) {
+        user.phone = shippingAddress.phone || user.phone;
+
+        const shouldBeDefault = user.addresses.length === 0 || Boolean(shippingAddress.isDefault);
+        if (shouldBeDefault) {
+          user.addresses.forEach((savedAddress) => {
+            savedAddress.isDefault = false;
+          });
+        }
+
+        const savedDeliveryAddress = {
+          label: shippingAddress.label || "Home",
+          street: shippingAddress.street,
+          suburb: shippingAddress.suburb || "",
+          city: shippingAddress.city,
+          state: shippingAddress.state || "",
+          postalCode: shippingAddress.postalCode,
+          country: shippingAddress.country || "India",
+          lat: shippingAddress.lat,
+          lng: shippingAddress.lng,
+          isDefault: shouldBeDefault,
+        };
+
+        const existingIndex = user.addresses.findIndex((savedAddress) =>
+          savedAddress.street === savedDeliveryAddress.street &&
+          (savedAddress.suburb || "") === (savedDeliveryAddress.suburb || "") &&
+          savedAddress.city === savedDeliveryAddress.city &&
+          savedAddress.postalCode === savedDeliveryAddress.postalCode
+        );
+
+        if (existingIndex >= 0) {
+          user.addresses[existingIndex] = savedDeliveryAddress;
+        } else {
+          user.addresses.push(savedDeliveryAddress);
+        }
+
+        await user.save();
+      }
+    }
+
     res.status(201).json({ success: true, order });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });

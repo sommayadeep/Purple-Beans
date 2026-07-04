@@ -10,9 +10,19 @@ interface Order {
   orderId: string;
   createdAt: string;
   totalAmount: number;
+  customerPhone?: string;
   paymentMethod: string;
   paymentStatus: string;
   orderStatus: string;
+  shippingAddress?: {
+    street?: string;
+    suburb?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+  };
   user: {
     name: string;
     email: string;
@@ -114,6 +124,7 @@ export default function AdminOrdersPage() {
                 <tr className="border-b border-[#5A3825]/30 text-[#F7F3EE]/40 uppercase tracking-wider font-semibold">
                   <th className="py-3 pr-4">Order ID</th>
                   <th className="py-3 px-4">Customer</th>
+                  <th className="py-3 px-4">Delivery</th>
                   <th className="py-3 px-4">Amount</th>
                   <th className="py-3 px-4">Method</th>
                   <th className="py-3 px-4">Payment</th>
@@ -134,6 +145,16 @@ export default function AdminOrdersPage() {
                         <p className="font-semibold">{order.user?.name || "Guest"}</p>
                         <p className="text-[10px] text-[#F7F3EE]/40 font-mono">{order.user?.email}</p>
                       </div>
+                    </td>
+                    <td className="py-4 px-4 min-w-[220px]">
+                      <p className="font-mono text-[10px] text-[#F7F3EE]/70">
+                        {order.shippingAddress?.phone || order.customerPhone || "No phone"}
+                      </p>
+                      <p className="mt-1 text-[10px] text-[#F7F3EE]/45 leading-relaxed">
+                        {order.shippingAddress?.street || "No address"}
+                        {order.shippingAddress?.suburb ? `, ${order.shippingAddress.suburb}` : ""},{" "}
+                        {order.shippingAddress?.city || ""} {order.shippingAddress?.postalCode || ""}
+                      </p>
                     </td>
                     <td className="py-4 px-4 font-bold text-[#F7F3EE]">₹{Math.round(order.totalAmount)}</td>
                     <td className="py-4 px-4 uppercase font-semibold text-[#F7F3EE]/60">{order.paymentMethod}</td>

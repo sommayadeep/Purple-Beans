@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Truck, Package, ShieldCheck, FileText } from "lucide-react";
+import { ArrowLeft, Loader2, Truck, Package, ShieldCheck, FileText, Phone, MapPin } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -16,6 +16,7 @@ interface OrderItem {
 }
 
 interface ShippingAddress {
+  label?: string;
   street: string;
   suburb: string;
   city: string;
@@ -23,6 +24,8 @@ interface ShippingAddress {
   postalCode: string;
   country: string;
   phone: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface Order {
@@ -33,6 +36,7 @@ interface Order {
   paymentMethod: string;
   paymentStatus: string;
   orderStatus: string;
+  customerPhone?: string;
   shippingAddress: ShippingAddress;
   items: OrderItem[];
   notes?: string;
@@ -100,6 +104,17 @@ export default function AdminOrderDetailPage() {
   }
 
   if (!order) return null;
+  const deliveryPhone = order.shippingAddress.phone || order.customerPhone || "";
+  const mapsUrl = order.shippingAddress.lat && order.shippingAddress.lng
+    ? `https://www.google.com/maps/search/?api=1&query=${order.shippingAddress.lat},${order.shippingAddress.lng}`
+    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([
+        order.shippingAddress.street,
+        order.shippingAddress.suburb,
+        order.shippingAddress.city,
+        order.shippingAddress.state,
+        order.shippingAddress.postalCode,
+        order.shippingAddress.country,
+      ].filter(Boolean).join(", "))}`;
 
   return (
     <div className="space-y-8">
@@ -179,13 +194,37 @@ export default function AdminOrderDetailPage() {
             <div className="text-xs space-y-1">
               <p className="font-semibold">{order.user?.name || "Guest User"}</p>
               <p className="font-mono text-[#F7F3EE]/50">{order.user?.email}</p>
+              {order.shippingAddress.label && (
+                <p className="mt-2 text-[10px] uppercase tracking-wider text-[#6B4B7D] font-bold">
+                  {order.shippingAddress.label}
+                </p>
+              )}
               <p className="mt-2 text-[#F7F3EE]/80">{order.shippingAddress.street}</p>
               {order.shippingAddress.suburb && <p className="text-[#F7F3EE]/80">{order.shippingAddress.suburb}</p>}
               <p className="text-[#F7F3EE]/80">
                 {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.postalCode}
               </p>
               <p className="text-[#F7F3EE]/80">{order.shippingAddress.country}</p>
-              <p className="mt-2 font-mono text-[10px]">Phone: {order.shippingAddress.phone}</p>
+              <div className="pt-3 flex flex-col sm:flex-row gap-2">
+                {deliveryPhone && (
+                  <a
+                    href={`tel:${deliveryPhone}`}
+                    className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#120A07] border border-[#5A3825]/40 rounded-sm text-[10px] font-mono text-[#F7F3EE] hover:border-[#6B4B7D]"
+                  >
+                    <Phone className="w-3.5 h-3.5 text-[#6B4B7D]" />
+                    {deliveryPhone}
+                  </a>
+                )}
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-3 py-2 bg-[#120A07] border border-[#5A3825]/40 rounded-sm text-[10px] font-semibold uppercase tracking-wider text-[#F7F3EE] hover:border-[#6B4B7D]"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#6B4B7D]" />
+                  Open Map
+                </a>
+              </div>
             </div>
           </div>
 

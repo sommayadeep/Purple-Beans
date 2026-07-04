@@ -10,6 +10,7 @@ export interface IUser extends Document {
   addresses: {
     label: string;
     street: string;
+    suburb?: string;
     city: string;
     state: string;
     postalCode: string;
@@ -26,6 +27,7 @@ const AddressSchema = new Schema(
   {
     label: { type: String, default: "Home" },
     street: { type: String, required: true },
+    suburb: { type: String, default: "" },
     city: { type: String, required: true },
     state: { type: String, default: "" },
     postalCode: { type: String, required: true },
