@@ -159,8 +159,12 @@ export default function CheckoutPage() {
           throw new Error(payData.error || "Failed to create payment order");
         }
 
+        if (!payData.keyId) {
+          throw new Error("Razorpay public key is missing from the payment order");
+        }
+
         const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_T5LPZwTGIxizFn",
+          key: payData.keyId,
           amount: payData.order.amount,
           currency: payData.order.currency,
           name: "Purple Beans",

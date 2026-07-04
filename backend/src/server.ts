@@ -41,6 +41,10 @@ const GATEWAY_SECRET = process.env.GATEWAY_SECRET || "purple-beans-gateway-jwt-s
 app.use(cors());
 app.use(express.json());
 
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.json({ success: true, service: "purple-beans-backend" });
+});
+
 // Gateway Verification Middleware: ensures requests come through the Next.js gateway
 const verifyGateway = (req: Request, res: Response, next: NextFunction): void => {
   const secret = req.headers["x-gateway-secret"];
@@ -447,8 +451,13 @@ app.post("/api/payment/create-order", verifyAuth, async (req: Request, res: Resp
       return;
     }
 
-    const keyId = process.env.RAZORPAY_KEY_ID || "rzp_test_placeholder";
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || "placeholder_secret";
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      res.status(500).json({ success: false, error: "Razorpay credentials are not configured" });
+      return;
+    }
 
     const instance = new Razorpay({
       key_id: keyId,
@@ -462,7 +471,7 @@ app.post("/api/payment/create-order", verifyAuth, async (req: Request, res: Resp
     };
 
     const order = await instance.orders.create(options);
-    res.json({ success: true, order });
+    res.json({ success: true, order, keyId });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
@@ -478,7 +487,12 @@ app.post("/api/payment/verify", verifyAuth, async (req: Request, res: Response) 
       return;
     }
 
-    const keySecret = process.env.RAZORPAY_KEY_SECRET || "placeholder_secret";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keySecret) {
+      res.status(500).json({ success: false, error: "Razorpay credentials are not configured" });
+      return;
+    }
+
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac("sha256", keySecret)
