@@ -172,8 +172,16 @@ export default function CheckoutPage() {
 
     setIsProcessing(true);
     const toastId = toast.loading("Processing order...");
+    
+    // Safety timeout to prevent infinite spinning if any API call hangs
+    const safetyTimeout = setTimeout(() => {
+      toast.error("Order process timed out. Please try again.", { id: toastId });
+      setIsProcessing(false);
+    }, 15000);
 
     try {
+      console.log("Starting order process...");
+      
       // 1. Verify Turnstile
       const turnstileRes = await fetch("/api/turnstile", {
         method: "POST",
@@ -181,7 +189,10 @@ export default function CheckoutPage() {
         body: JSON.stringify({ token: turnstileToken }),
       });
       const turnstileData = await turnstileRes.json();
+      console.log("Turnstile result:", turnstileData);
+
       if (!turnstileData.success) {
+        clearTimeout(safetyTimeout);
         toast.error("Security verification failed. Please refresh.", { id: toastId });
         setIsProcessing(false);
         return;
@@ -198,9 +209,12 @@ export default function CheckoutPage() {
         phone,
       };
 
+      // 2. Process Payment based on method
       if (paymentMethod === "cod") {
-        // COD Direct order creation
+        clearTimeout(safetyTimeout);
+        console.log("Processing COD...");
         toast.loading("Creating your order...", { id: toastId });
+        
         const orderRes = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -220,22 +234,29 @@ export default function CheckoutPage() {
         });
 
         const orderData = await orderRes.json();
-        if (!orderRes.ok) {
-          throw new Error(orderData.error || "Failed to place order");
-        }
+        console.log("COD order creation result:", orderData);
 
-        setOrderId(orderData.order.orderId);
-        setIsSuccess(true);
-        clearCart();
-        toast.success("Order placed successfully!", { id: toastId });
+        if (orderRes.ok) {
+          setOrderId(orderData.order.orderId);
+          setIsSuccess(true);
+          clearCart();
+          toast.success("Order placed successfully!", { id: toastId });
+        } else {
+          toast.error(orderData.error || "Failed to place order", { id: toastId });
+        }
+        setIsProcessing(false);
       } else {
         // Razorpay Payment flow
+        console.log("Loading Razorpay script...");
         toast.loading("Loading secure payment gateway...", { id: toastId });
         const razorpayLoaded = await loadRazorpayScript();
+
         if (!razorpayLoaded) {
+          clearTimeout(safetyTimeout);
           throw new Error("Razorpay SDK failed to load. Are you offline?");
         }
 
+        console.log("Fetching order token from backend...");
         // Initialize Razorpay order on backend
         toast.loading("Preparing payment request...", { id: toastId });
         const payRes = await fetch("/api/payment/create-order", {
@@ -245,13 +266,19 @@ export default function CheckoutPage() {
         });
 
         const payData = await payRes.json();
+        console.log("PayData received:", payData);
+
         if (!payRes.ok) {
+          clearTimeout(safetyTimeout);
           throw new Error(payData.error || "Failed to create payment order");
         }
 
         if (!payData.keyId) {
+          clearTimeout(safetyTimeout);
           throw new Error("Razorpay public key is missing from the payment order");
         }
+        
+        clearTimeout(safetyTimeout); // Payment gateway ready
 
         const options = {
           key: payData.keyId,
