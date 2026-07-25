@@ -263,55 +263,60 @@ export default function CheckoutPage() {
           handler: async function (response: any) {
             toast.loading("Verifying transaction...", { id: toastId });
 
-            // Create order first
-            const orderRes = await fetch("/api/orders", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                items: items.map((item) => ({
-                  productId: item.product.id,
-                  name: item.product.name,
-                  quantity: item.quantity,
-                  grind: item.grind,
-                  weight: item.weight,
-                })),
-                shippingAddress: formattedAddress,
-                paymentMethod: "razorpay",
-                notes,
-                razorpayOrderId: payData.order.id,
-                saveAddress,
-              }),
-            });
+            try {
+              // Create order first
+              const orderRes = await fetch("/api/orders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  items: items.map((item) => ({
+                    productId: item.product.id,
+                    name: item.product.name,
+                    quantity: item.quantity,
+                    grind: item.grind,
+                    weight: item.weight,
+                  })),
+                  shippingAddress: formattedAddress,
+                  paymentMethod: "razorpay",
+                  notes,
+                  razorpayOrderId: payData.order.id,
+                  saveAddress,
+                }),
+              });
 
-            const orderData = await orderRes.json();
-            if (!orderRes.ok) {
-              toast.error(orderData.error || "Failed to create order trace", { id: toastId });
+              const orderData = await orderRes.json();
+              if (!orderRes.ok) {
+                toast.error(orderData.error || "Failed to create order trace", { id: toastId });
+                return;
+              }
+
+              // Verify payment
+              const verifyRes = await fetch("/api/payment/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                  orderId: orderData.order.orderId,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+              if (verifyRes.ok && verifyData.success) {
+                setOrderId(orderData.order.orderId);
+                setIsSuccess(true);
+                clearCart();
+                toast.success("Payment verified and order placed!", { id: toastId });
+              } else {
+                toast.error(verifyData.error || "Payment verification failed", { id: toastId });
+              }
+            } catch (err: any) {
+              console.error("Razorpay handler error:", err);
+              toast.error(err.message || "An error occurred during verification", { id: toastId });
+            } finally {
               setIsProcessing(false);
-              return;
             }
-
-            // Verify payment
-            const verifyRes = await fetch("/api/payment/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                orderId: orderData.order.orderId,
-              }),
-            });
-
-            const verifyData = await verifyRes.json();
-            if (verifyRes.ok && verifyData.success) {
-              setOrderId(orderData.order.orderId);
-              setIsSuccess(true);
-              clearCart();
-              toast.success("Payment verified and order placed!", { id: toastId });
-            } else {
-              toast.error(verifyData.error || "Payment verification failed", { id: toastId });
-            }
-            setIsProcessing(false);
           },
           prefill: {
             name: session?.user?.name || "",
@@ -331,6 +336,10 @@ export default function CheckoutPage() {
         };
 
         const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.on("payment.failed", function (response: any) {
+          toast.error(response.error.description || "Payment failed", { id: toastId });
+          setIsProcessing(false);
+        });
         paymentObject.open();
       }
     } catch (error: any) {
