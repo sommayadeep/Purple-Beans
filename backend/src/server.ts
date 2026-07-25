@@ -669,9 +669,9 @@ app.get("/api/location", async (req: Request, res: Response) => {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 9000);
 
-      let response: Response;
+      let nominatimResponse: globalThis.Response;
       try {
-        response = await fetch(
+        nominatimResponse = await fetch(
           `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
           {
             headers: {
@@ -684,11 +684,11 @@ app.get("/api/location", async (req: Request, res: Response) => {
         clearTimeout(timeout);
       }
 
-      if (!response.ok) {
+      if (!nominatimResponse.ok) {
         throw new Error("Failed to fetch address from Nominatim");
       }
 
-      const data = (await response.json()) as NominatimReverseResponse;
+      const data = (await nominatimResponse.json()) as NominatimReverseResponse;
       const address = data.address || {};
 
       res.json({
@@ -728,7 +728,7 @@ app.get("/api/location", async (req: Request, res: Response) => {
       throw new Error("Failed to fetch approximate location from IP lookup");
     }
 
-    const data = await fetchResponse.json();
+    const data = (await fetchResponse.json()) as any;
 
     res.json({
       success: true,
