@@ -45,15 +45,25 @@ export default function LocationPicker({ onAddressSelected, initialAddress }: Lo
       async (position) => {
         const { latitude, longitude } = position.coords;
         try {
-          const res = await fetch(`/api/location?lat=${latitude}&lon=${longitude}`);
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`);
+          if (!res.ok) throw new Error("Failed to fetch from OSM");
           const data = await res.json();
 
-          if (data.success && data.address) {
-            setAddress(data.address);
-            onAddressSelected(data.address);
+          if (data && data.address) {
+            const addressObj = {
+              road: data.address.road || "",
+              suburb: data.address.suburb || data.address.neighbourhood || "",
+              city: data.address.city || data.address.town || data.address.village || "",
+              state: data.address.state || "",
+              postcode: data.address.postcode || "",
+              country: data.address.country || "",
+              raw: data.display_name,
+            };
+            setAddress(addressObj);
+            onAddressSelected(addressObj);
             toast.success("Location auto-filled!", { id: "geo" });
           } else {
-            throw new Error(data.error || "Failed to retrieve address details");
+            throw new Error("Failed to retrieve address details");
           }
         } catch (error: any) {
           console.error(error);
@@ -66,16 +76,25 @@ export default function LocationPicker({ onAddressSelected, initialAddress }: Lo
         console.error(error);
 
         try {
-          const fallbackRes = await fetch(`/api/location`, { cache: "no-store" });
-          const fallbackData = await fallbackRes.json();
-
-          if (fallbackRes.ok && fallbackData.success && fallbackData.address) {
-            const fallbackAddress = fallbackData.address;
-            setAddress(fallbackAddress);
-            onAddressSelected(fallbackAddress);
-            toast.success("Approximate location detected. Please complete the street address.", { id: "geo" });
-            setLoading(false);
-            return;
+          const fallbackRes = await fetch(`https://ipapi.co/json/`);
+          if (fallbackRes.ok) {
+            const fallbackData = await fallbackRes.json();
+            if (fallbackData && fallbackData.city) {
+              const fallbackAddress = {
+                road: "",
+                suburb: fallbackData.city || "",
+                city: fallbackData.city || "",
+                state: fallbackData.region || "",
+                postcode: fallbackData.postal || "",
+                country: fallbackData.country_name || "",
+                raw: [fallbackData.city, fallbackData.region, fallbackData.country_name].filter(Boolean).join(", "),
+              };
+              setAddress(fallbackAddress);
+              onAddressSelected(fallbackAddress);
+              toast.success("Approximate location detected. Please complete the street address.", { id: "geo" });
+              setLoading(false);
+              return;
+            }
           }
         } catch (fallbackError) {
           console.error(fallbackError);
