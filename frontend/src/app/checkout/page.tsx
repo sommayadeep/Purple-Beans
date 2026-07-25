@@ -264,7 +264,7 @@ export default function CheckoutPage() {
             toast.loading("Verifying transaction...", { id: toastId });
 
             try {
-              // Create order first
+              // ... order verification logic ...
               const orderRes = await fetch("/api/orders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -340,7 +340,27 @@ export default function CheckoutPage() {
           toast.error(response.error.description || "Payment failed", { id: toastId });
           setIsProcessing(false);
         });
-        paymentObject.open();
+        
+        try {
+          paymentObject.open();
+        } catch (err: any) {
+          toast.error("Payment gateway failed to open.", { id: toastId });
+          setIsProcessing(false);
+          return;
+        }
+
+        // Detect silent failures (e.g., Brave Shields injecting a dummy Razorpay object)
+        // Since we can't reliably clear the timeout from inside the options object without restructuring,
+        // we will check if the Razorpay frame exists OR if the state was updated (by querying DOM for spinner)
+        setTimeout(() => {
+          const rzpContainer = document.querySelector(".razorpay-container");
+          // If the container isn't there, and the button is STILL disabled (meaning we haven't finished/closed)
+          const submitBtn = document.querySelector("button[type='submit']") as HTMLButtonElement;
+          if (!rzpContainer && submitBtn && submitBtn.disabled) {
+            toast.error("Payment gateway was blocked. Please disable your ad-blocker or Brave Shields and try again.", { id: toastId, duration: 6000 });
+            setIsProcessing(false);
+          }
+        }, 3500);
       }
     } catch (error: any) {
       console.error(error);
