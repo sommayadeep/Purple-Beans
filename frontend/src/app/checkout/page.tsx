@@ -142,6 +142,8 @@ export default function CheckoutPage() {
       script.onload = () => resolve(true);
       script.onerror = () => resolve(false);
       document.body.appendChild(script);
+
+      setTimeout(() => resolve(false), 10000);
     });
   };
 
@@ -198,6 +200,7 @@ export default function CheckoutPage() {
 
       if (paymentMethod === "cod") {
         // COD Direct order creation
+        toast.loading("Creating your order...", { id: toastId });
         const orderRes = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -227,12 +230,14 @@ export default function CheckoutPage() {
         toast.success("Order placed successfully!", { id: toastId });
       } else {
         // Razorpay Payment flow
+        toast.loading("Loading secure payment gateway...", { id: toastId });
         const razorpayLoaded = await loadRazorpayScript();
         if (!razorpayLoaded) {
           throw new Error("Razorpay SDK failed to load. Are you offline?");
         }
 
         // Initialize Razorpay order on backend
+        toast.loading("Preparing payment request...", { id: toastId });
         const payRes = await fetch("/api/payment/create-order", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

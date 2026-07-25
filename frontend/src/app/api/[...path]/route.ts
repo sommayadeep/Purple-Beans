@@ -49,12 +49,21 @@ async function proxyRequest(req: Request, { params }: { params: Promise<{ path: 
       body = await req.arrayBuffer();
     }
 
-    const backendRes = await fetch(targetUrl, {
-      method: req.method,
-      headers,
-      body,
-      cache: "no-store",
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 12000);
+
+    let backendRes: Response;
+    try {
+      backendRes = await fetch(targetUrl, {
+        method: req.method,
+        headers,
+        body,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     const data = await backendRes.arrayBuffer();
     const responseHeaders = new Headers();

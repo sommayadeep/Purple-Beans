@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Mail, ArrowRight } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 export default function Footer() {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const pathname = usePathname();
 
   const handleSubscribe = (e: React.FormEvent) => {
     e.preventDefault();
@@ -17,6 +19,10 @@ export default function Footer() {
       setIsSubmitted(false);
     }, 4000);
   };
+
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
 
   return (
     <footer className="w-full bg-[#1C120D] text-[#F7F3EE] py-16 px-6 md:px-12 relative overflow-hidden border-t border-[#5A3825]/30">

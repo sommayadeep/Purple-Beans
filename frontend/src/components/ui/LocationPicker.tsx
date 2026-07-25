@@ -62,12 +62,35 @@ export default function LocationPicker({ onAddressSelected, initialAddress }: Lo
           setLoading(false);
         }
       },
-      (error) => {
+      async (error) => {
         console.error(error);
+
+        try {
+          const fallbackRes = await fetch(`/api/location`, { cache: "no-store" });
+          const fallbackData = await fallbackRes.json();
+
+          if (fallbackRes.ok && fallbackData.success && fallbackData.address) {
+            const fallbackAddress = fallbackData.address;
+            setAddress(fallbackAddress);
+            onAddressSelected(fallbackAddress);
+            toast.success("Approximate location detected. Please complete the street address.", { id: "geo" });
+            setLoading(false);
+            return;
+          }
+        } catch (fallbackError) {
+          console.error(fallbackError);
+        }
+
+        if (error.code === error.PERMISSION_DENIED) {
+          toast.error("Location access denied. Please enter manually.", { id: "geo" });
+        } else if (error.code === error.TIMEOUT) {
+          toast.error("Location request timed out. Please enter manually.", { id: "geo" });
+        } else {
+          toast.error("Location access failed. Please enter manually.", { id: "geo" });
+        }
         setLoading(false);
-        toast.error("Location access denied or timed out. Please enter manually.", { id: "geo" });
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   };
 

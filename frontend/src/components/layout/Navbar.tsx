@@ -43,6 +43,10 @@ export default function Navbar() {
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
+  if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
   const navLinks = [
     { href: "/shop", label: "Shop Collections", icon: Bean },
     { href: "/about", label: "Our Story", icon: Compass },

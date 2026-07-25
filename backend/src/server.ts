@@ -657,41 +657,90 @@ app.post("/api/payment/verify", verifyAuth, async (req: Request, res: Response) 
 // 5. GEOLOCATION & CAPTCHA PROXIES
 // ==========================================
 
-// GET /api/location - Nominatim OSM reverse geocoding API proxy
+// GET /api/location - Nominatim OSM reverse geocoding API proxy with IP fallback
 app.get("/api/location", async (req: Request, res: Response) => {
   try {
     const { lat, lon } = req.query;
-    if (!lat || !lon) {
-      res.status(400).json({ error: "Latitude and longitude are required" });
+    const ipAddress = ((req.headers["x-forwarded-for"] as string) || "")
+      .split(",")[0]
+      ?.trim() || req.socket.remoteAddress || "";
+
+    if (lat && lon) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 9000);
+
+      let response: Response;
+      try {
+        response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
+          {
+            headers: {
+              "User-Agent": "Purple-Beans-B2B-App/1.0",
+            },
+            signal: controller.signal,
+          }
+        );
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch address from Nominatim");
+      }
+
+      const data = (await response.json()) as NominatimReverseResponse;
+      const address = data.address || {};
+
+      res.json({
+        success: true,
+        approximate: false,
+        address: {
+          raw: data.display_name,
+          road: address.road || "",
+          suburb: address.suburb || address.neighbourhood || "",
+          city: address.city || address.town || address.village || "",
+          state: address.state || "",
+          postcode: address.postcode || "",
+          country: address.country || "",
+        },
+      });
       return;
     }
 
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`,
-      {
-        headers: {
-          "User-Agent": "Purple-Beans-B2B-App/1.0",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch address from Nominatim");
+    if (!ipAddress) {
+      res.status(400).json({ error: "Latitude and longitude or client IP are required" });
+      return;
     }
 
-    const data = (await response.json()) as NominatimReverseResponse;
-    const address = data.address || {};
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    let fetchResponse: globalThis.Response;
+    try {
+      fetchResponse = await fetch(`https://ipapi.co/${encodeURIComponent(ipAddress)}/json/`, {
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!fetchResponse.ok) {
+      throw new Error("Failed to fetch approximate location from IP lookup");
+    }
+
+    const data = await fetchResponse.json();
 
     res.json({
       success: true,
+      approximate: true,
       address: {
-        raw: data.display_name,
-        road: address.road || "",
-        suburb: address.suburb || address.neighbourhood || "",
-        city: address.city || address.town || address.village || "",
-        state: address.state || "",
-        postcode: address.postcode || "",
-        country: address.country || "",
+        raw: [data.city, data.region, data.country_name].filter(Boolean).join(", "),
+        road: "",
+        suburb: data.city || "",
+        city: data.city || "",
+        state: data.region || "",
+        postcode: data.postal || "",
+        country: data.country_name || "",
       },
     });
   } catch (error: any) {
