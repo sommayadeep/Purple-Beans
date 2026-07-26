@@ -45,6 +45,7 @@ export default function Footer() {
             {[
               {
                 label: "Instagram",
+                href: "https://www.instagram.com/purplebeanagro/",
                 svg: (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
@@ -54,25 +55,31 @@ export default function Footer() {
                 )
               },
               {
-                label: "Twitter",
-                svg: (
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" />
-                  </svg>
-                )
-              },
-              {
                 label: "Facebook",
+                href: "https://www.facebook.com/people/Purple-Bean-Caf%C3%A9/61569305440006/?rdid=Q61ZVxBnfbWEuSRG&share_url=https%3A%2F%2Fwww.facebook.com%2Fshare%2F1MQUaH1KNB%2F%3Fref%3D1",
                 svg: (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
                   </svg>
                 )
+              },
+              {
+                label: "Official Website",
+                href: "https://www.pbai.in/",
+                svg: (
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="2" y1="12" x2="22" y2="12"/>
+                    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                  </svg>
+                )
               }
-            ].map(({ label, svg }) => (
+            ].map(({ label, href, svg }) => (
               <a
                 key={label}
-                href="#"
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="w-10 h-10 rounded-full border border-[#EADFCC]/25 flex items-center justify-center text-[#EADFCC] hover:text-[#6B4B7D] hover:bg-[#F7F3EE] hover:border-[#F7F3EE] transition-all duration-300"
                 aria-label={label}
               >
